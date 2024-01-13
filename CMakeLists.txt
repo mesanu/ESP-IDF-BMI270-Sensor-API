@@ -1,0 +1,3 @@
+idf_component_register(SRCS "bmi2.c" "bmi270_context.c" "bmi270_maximum_fifo.c"
+                    INCLUDE_DIRS "." "./esp_common"
+                    REQUIRES driver)
