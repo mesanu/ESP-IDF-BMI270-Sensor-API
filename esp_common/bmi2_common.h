@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  **/
 
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef _BMI2_COMMON_H
+#define _BMI2_COMMON_H
 
 /*! CPP guard */
 #ifdef __cplusplus
@@ -13,11 +13,17 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include "bmi2.h"
+#include "bmi2_defs.h"
+#include "driver/spi_master.h"
 
 /******************************************************************************/
 /* Structure declarations */
 /******************************************************************************/
+typedef struct {
+    spi_host_device_t spiHost;
+    spi_device_interface_config_t *spiInterfaceConfig;
+    spi_device_handle_t spiHandle;
+} bmi2_intf_config_t;
 
 /******************************************************************************/
 /*!                       Function Definitions                                */
@@ -119,4 +125,4 @@ void bmi2_error_codes_print_result(int8_t rslt);
 }
 #endif /* End of CPP guard */
 
-#endif /* _COMMON_H */
+#endif /* _BMI2_COMMON_H */

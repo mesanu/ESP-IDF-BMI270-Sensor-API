@@ -4,13 +4,18 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "common.h"
+#include "bmi2_common.h"
 #include "bmi2_defs.h"
+#include "driver/spi_master.h"
+#include "rom/ets_sys.h"
+
 #include "esp_log.h"
 
 /******************************************************************************/
 /*!                 Macro definitions                                         */
-
+#define BMI2_WRITE_COMMAND 0
+#define BMI2_READ_COMMAND 1
+#define BMI2_INTF_RET_FAIL 1
 
 /******************************************************************************/
 /*!                Static variable definition                                 */
@@ -24,7 +29,8 @@ static const char *TAG = "BMI270";
  */
 BMI2_INTF_RETURN_TYPE bmi2_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
 {
-    return 0;
+    ESP_LOGE(TAG, "Error: I2C read attempt. I2C is currently not supported");
+    return BMI2_INTF_RET_FAIL;
 }
 
 /*!
@@ -32,7 +38,8 @@ BMI2_INTF_RETURN_TYPE bmi2_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_
  */
 BMI2_INTF_RETURN_TYPE bmi2_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr)
 {
-    return 0;
+    ESP_LOGE(TAG, "Error: I2C write attempt. I2C is currently not supported");
+    return BMI2_INTF_RET_FAIL;
 }
 
 /*!
@@ -40,15 +47,38 @@ BMI2_INTF_RETURN_TYPE bmi2_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, 
  */
 BMI2_INTF_RETURN_TYPE bmi2_spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
 {
-    return 0;
+    bmi2_intf_config_t *interfaceConfig = (bmi2_intf_config_t *)intf_ptr;
+    spi_transaction_t transaction = {
+        .addr = reg_addr,
+        /* len is given in bytes while struct members are in bits */
+        .length = len*8,
+        .rxlength = len*8,
+        .rx_buffer = reg_data,
+    };
+    esp_err_t err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
+    if(err != ESP_OK) {
+        return BMI2_INTF_RET_FAIL;
+    }
+    return BMI2_INTF_RET_SUCCESS;
 }
 
 /*!
  * SPI write function map to ESP SPI API
  */
 BMI2_INTF_RETURN_TYPE bmi2_spi_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr)
-{
-    return 0;
+{    
+    bmi2_intf_config_t *interfaceConfig = (bmi2_intf_config_t *)intf_ptr;
+    spi_transaction_t transaction = {
+        .addr = reg_addr,
+        /* len is given in bytes while struct members are in bits */
+        .length = len*8,
+        .tx_buffer = reg_data,
+    };
+    esp_err_t err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
+    if(err != ESP_OK) {
+        return BMI2_INTF_RET_FAIL;
+    }
+    return BMI2_INTF_RET_SUCCESS;
 }
 
 /*!
@@ -56,6 +86,7 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_write(uint8_t reg_addr, const uint8_t *reg_data, 
  */
 void bmi2_delay_us(uint32_t period, void *intf_ptr)
 {
+    ets_delay_us(period);
 }
 
 /*!
@@ -63,6 +94,37 @@ void bmi2_delay_us(uint32_t period, void *intf_ptr)
  */
 int8_t bmi2_interface_init(struct bmi2_dev *bmi, uint8_t intf)
 {
+    bmi2_intf_config_t *interfaceConfig = (bmi2_intf_config_t *)bmi->intf_ptr;
+    esp_err_t err = ESP_OK;
+    int8_t rslt = BMI2_OK;
+
+    if (bmi != NULL)
+    {
+
+        /* Bus configuration : I2C */
+        if (intf == BMI2_I2C_INTF) {
+            rslt = BMI2_E_COM_FAIL;
+        }
+        /* Bus configuration : SPI */
+        else if (intf == BMI2_SPI_INTF) {
+            bmi->intf = BMI2_SPI_INTF;
+            bmi->read = bmi2_spi_read;
+            bmi->write = bmi2_spi_write;
+
+            /* Configure delay in microseconds */
+            bmi->delay_us = bmi2_delay_us;
+            err = spi_bus_add_device(interfaceConfig->spiHost, interfaceConfig->spiInterfaceConfig, &interfaceConfig->spiHandle);
+            if(err != ESP_OK) {
+                rslt = BMI2_E_COM_FAIL;
+            }
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+    bmi2_error_codes_print_result(rslt);
+    return rslt;
 }
 
 
@@ -71,8 +133,7 @@ int8_t bmi2_interface_init(struct bmi2_dev *bmi, uint8_t intf)
  */
 void bmi2_error_codes_print_result(int8_t rslt)
 {
-    switch (rslt)
-    {
+    switch (rslt) {
         case BMI2_OK:
             /* Do nothing */
             break;
@@ -146,7 +207,7 @@ void bmi2_error_codes_print_result(int8_t rslt)
             ESP_LOGE(TAG, "Error [%d] : CRT error. It occurs when the CRT test has failed", rslt);
             break;
         case BMI2_E_ST_ALREADY_RUNNING:
-            ESP_LOGE(TAG, "Error [%d] : Self-test already running error. It occurs when the self-test is already running and another has been initiated", drslt);
+            ESP_LOGE(TAG, "Error [%d] : Self-test already running error. It occurs when the self-test is already running and another has been initiated", rslt);
             break;
         case BMI2_E_CRT_READY_FOR_DL_FAIL_ABORT:
             ESP_LOGE(TAG, "Error [%d] : CRT ready for download fail abort error. It occurs when download in CRT fails due to wrong address location", rslt);
@@ -173,7 +234,7 @@ void bmi2_error_codes_print_result(int8_t rslt)
             ESP_LOGE(TAG, "Error [%d] : Invalid FOC position error. It occurs when average FOC data is obtained for the wrong axes", rslt);
             break;
         default:
-            ESP_LOGE("Error [%d] : Unknown error code", rslt);
+            ESP_LOGE(TAG, "Error [%d] : Unknown error code", rslt);
             break;
     }
 }
