@@ -113,7 +113,7 @@ int8_t bmi2_interface_init(struct bmi2_dev *bmi, uint8_t intf)
 
             /* Configure delay in microseconds */
             bmi->delay_us = bmi2_delay_us;
-            err = spi_bus_add_device(interfaceConfig->spiHost, interfaceConfig->spiInterfaceConfig, &interfaceConfig->spiHandle);
+            err = spi_bus_add_device(interfaceConfig->spiHost, &interfaceConfig->spiInterfaceConfig, &interfaceConfig->spiHandle);
             if(err != ESP_OK) {
                 rslt = BMI2_E_COM_FAIL;
             }

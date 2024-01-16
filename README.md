@@ -26,6 +26,11 @@ spi_device_interface_config_t SPIInterfaceConfig = {
     .queue_size = 1,
 };
 ```
+## bmi2_dev intf_ptr
+
+A new type has been defined in bmi2_common.h, bmi2_intf_config_t, which contains the types
+and data requires to register devices on the ESP SPI bus and perform spi transactions.
+Ensure the the intf_ptr member of the bmi2_dev struct is a pointer that points to an initialized bmi2_intf_config_t instance.
 
 ## Applications
 
