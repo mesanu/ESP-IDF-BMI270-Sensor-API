@@ -6,6 +6,7 @@
 
 #include "bmi2_common.h"
 #include "bmi2_defs.h"
+
 #include "driver/spi_master.h"
 #include "rom/ets_sys.h"
 
@@ -48,6 +49,7 @@ BMI2_INTF_RETURN_TYPE bmi2_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, 
 BMI2_INTF_RETURN_TYPE bmi2_spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
 {
     bmi2_intf_config_t *interfaceConfig = (bmi2_intf_config_t *)intf_ptr;
+    esp_err_t err = ESP_OK;
     spi_transaction_t transaction = {
         .addr = reg_addr,
         /* len is given in bytes while struct members are in bits */
@@ -55,7 +57,13 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_
         .rxlength = len*8,
         .rx_buffer = reg_data,
     };
-    esp_err_t err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
+    if(xSemaphoreTake(interfaceConfig->spiSemaphore, 0)) {
+        err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
+        xSemaphoreGive(interfaceConfig->spiSemaphore);
+    } else {
+        return BMI2_INTF_RET_FAIL;
+    }
+    
     if(err != ESP_OK) {
         return BMI2_INTF_RET_FAIL;
     }
@@ -68,13 +76,20 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_
 BMI2_INTF_RETURN_TYPE bmi2_spi_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr)
 {    
     bmi2_intf_config_t *interfaceConfig = (bmi2_intf_config_t *)intf_ptr;
+    esp_err_t err = ESP_OK;
     spi_transaction_t transaction = {
         .addr = reg_addr,
         /* len is given in bytes while struct members are in bits */
         .length = len*8,
         .tx_buffer = reg_data,
     };
-    esp_err_t err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
+    
+    if(xSemaphoreTake(interfaceConfig->spiSemaphore, 0)) {
+        err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
+        xSemaphoreGive(interfaceConfig->spiSemaphore);
+    } else {
+        return BMI2_INTF_RET_FAIL;
+    }
     if(err != ESP_OK) {
         return BMI2_INTF_RET_FAIL;
     }
