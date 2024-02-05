@@ -25,7 +25,6 @@ typedef struct {
     spi_host_device_t spiHost;
     spi_device_interface_config_t spiInterfaceConfig;
     spi_device_handle_t spiHandle;
-    SemaphoreHandle_t spiSemaphore;
 } bmi2_intf_config_t;
 
 /******************************************************************************/

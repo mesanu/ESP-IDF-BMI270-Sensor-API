@@ -57,12 +57,8 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_
         .rxlength = len*8,
         .rx_buffer = reg_data,
     };
-    if(xSemaphoreTake(interfaceConfig->spiSemaphore, 0)) {
-        err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
-        xSemaphoreGive(interfaceConfig->spiSemaphore);
-    } else {
-        return BMI2_INTF_RET_FAIL;
-    }
+
+    err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
     
     if(err != ESP_OK) {
         return BMI2_INTF_RET_FAIL;
@@ -84,12 +80,8 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_write(uint8_t reg_addr, const uint8_t *reg_data, 
         .tx_buffer = reg_data,
     };
     
-    if(xSemaphoreTake(interfaceConfig->spiSemaphore, 0)) {
-        err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
-        xSemaphoreGive(interfaceConfig->spiSemaphore);
-    } else {
-        return BMI2_INTF_RET_FAIL;
-    }
+    err = spi_device_polling_transmit(interfaceConfig->spiHandle, &transaction);
+
     if(err != ESP_OK) {
         return BMI2_INTF_RET_FAIL;
     }
